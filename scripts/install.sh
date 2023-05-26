@@ -80,7 +80,7 @@ function build_fastdds() {
   then
     echo ""
   else
-    wget $DOWNLOAD_LINK -P $INSTALL_PATH
+    wget -t 10 $DOWNLOAD_LINK -P $INSTALL_PATH
   fi
   pushd $INSTALL_PATH
   tar -zxf ${PKG_NAME}
@@ -132,8 +132,8 @@ function build_gfamily() {
   # protobuf
   pushd "$CURRENT_PATH/../third_party/protobuf/"
   git checkout v3.14.0
-  ./autogen.sh
-  ./configure --prefix=$INSTALL_PREFIX --enable-shared
+  cd cmake && mkdir -p build && cd build
+  cmake -Dprotobuf_BUILD_SHARED_LIBS=ON -Dprotobuf_BUILD_TESTS=OFF ..
   make -j$(nproc)
   sudo make install
   popd
