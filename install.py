@@ -2,9 +2,10 @@
 import subprocess
 import platform
 import os
+import sys
 
 
-class Install:
+class Build:
 
     def __init__(self) -> None:
         self._machine = platform.machine()
@@ -17,11 +18,11 @@ class Install:
             os.makedirs(self._install_prefix)
 
     def start(self):
-        self._clone_setup()
-        self._clone_nlohmann_json()
-        self._clone_tinyxml2()
-        self._clone_gfamily()
-        self._clone_dds()
+        self._build_setup()
+        self._build_dds()
+        self._build_nlohmann_json()
+        self._build_tinyxml2()
+        self._build_gfamily()
 
     def _clone_github_repo(self, repo_url, repo_name, *args):
         dowload_path = os.path.join(self._dowload_path, repo_name)
@@ -39,9 +40,13 @@ class Install:
 
     def _cmd(self, command):
         print("[command] {}".format(command))
-        subprocess.run(command, shell=True)
+        result = subprocess.run(command, shell=True)
+        if result.returncode != 0:
+            print(f"Command failed with return code: {result.returncode}")
+            print(f"stderr: {result.stderr}")
+            sys.exit(1)
 
-    def _clone_setup(self):
+    def _build_setup(self):
         self._clone_github_repo(
             "https://github.com/minhanghuang/setup.git",
             "setup",
@@ -55,7 +60,7 @@ class Install:
         self._cmd("make install -j$(nproc)")
         os.chdir(self._current_path)
 
-    def _clone_nlohmann_json(self):
+    def _build_nlohmann_json(self):
         self._clone_github_repo(
             "https://github.com/nlohmann/json.git",
             "nlohmann_json",
@@ -69,7 +74,7 @@ class Install:
         self._cmd("make install -j$(nproc)")
         os.chdir(self._current_path)
 
-    def _clone_tinyxml2(self):
+    def _build_tinyxml2(self):
         self._clone_github_repo(
             "https://github.com/leethomason/tinyxml2.git",
             "tinyxml2",
@@ -85,7 +90,7 @@ class Install:
         self._cmd("make install -j$(nproc)")
         os.chdir(self._current_path)
 
-    def _clone_gfamily(self):
+    def _build_gfamily(self):
         self._clone_github_repo(
             "https://github.com/gflags/gflags.git",
             "gflags",
@@ -152,45 +157,51 @@ class Install:
         self._cmd("make install -j$(nproc)")
         os.chdir(self._current_path)
 
-    def _clone_dds(self):
-        # self._clone_github_repo(
-        #     "https://github.com/eProsima/Fast-RTPS.git",
-        #     "Fast-RTPS",
-        #     "--single-branch",
-        #     "--branch=v1.5.0",
-        #     "--depth=1"
-        # )
-        # os.chdir(os.path.join(self._dowload_path, "Fast-RTPS"))
-        # self._cmd("git submodule update --init")
-        # self._cmd("patch -p1 < {}".format(os.path.join(self._current_path,
-        #           "scripts/FastRTPS_1.5.0.patch")))
-        # self._cmd("mkdir -p build")
-        # self._cmd(
-        #     "cmake -DEPROSIMA_BUILD=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX={} ..".format(
-        #         self._install_prefix))
-        # os.chdir(self._current_path)
-
-        dds_name = "fast-rtps-1.5.0-1.prebuilt.x86_64.tar.gz"
-        if "x86_64" == self._machine:
-            pass
-        else:
-            dds_name = "fast-rtps-1.5.0-1.prebuilt.aarch64.tar.gz"
-
-        if os.path.exists(os.path.join(self._dowload_path, dds_name)):
-            return None
-
-        self._cmd(
-            "wget -t 10 {} -P {}".format(
-                "https://apollo-system.cdn.bcebos.com/archive/6.0/{}".format(dds_name),
-                self._dowload_path),
+    def _build_dds(self):
+        self._clone_github_repo(
+            "https://github.com/eProsima/Fast-RTPS.git",
+            "Fast-RTPS",
+            "--single-branch",
+            "--branch=v1.5.0",
+            "--depth=1"
         )
-        os.chdir(self._dowload_path)
-        self._cmd("tar -zxvf {}".format(dds_name))
-        self._cmd("cp -r fast-rtps-1.5.0-1/* {}".format(self._install_prefix))
-        self._cmd("rm -rf fast-rtps-1.5.0-1/")
+        os.chdir(os.path.join(self._dowload_path, "Fast-RTPS"))
+        self._cmd("git submodule update --init")
+        self._cmd("patch -p1 < {}".format(os.path.join(self._current_path,
+                  "scripts/FastRTPS_1.5.0.patch")))
+        self._cmd("mkdir -p build")
+        os.chdir("build")
+
+        self._cmd("cmake -DEPROSIMA_BUILD=OFF -DTHIRDPARTY=ON -DCOMPILE_EXAMPLES=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=external/install ..")
+        self._cmd("make install -j$(nproc)")
+
+        self._cmd("cmake -DEPROSIMA_BUILD=OFF -DTHIRDPARTY=ON -DCOMPILE_EXAMPLES=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX={} ..".format(self._install_prefix))
+        self._cmd("make install -j$(nproc)")
+        self._cmd("cp -r external/install/* {}".format(self._install_prefix))
+
         os.chdir(self._current_path)
+
+        # dds_name = "fast-rtps-1.5.0-1.prebuilt.x86_64.tar.gz"
+        # if "x86_64" == self._machine:
+        #     pass
+        # else:
+        #     dds_name = "fast-rtps-1.5.0-1.prebuilt.aarch64.tar.gz"
+
+        # if os.path.exists(os.path.join(self._dowload_path, dds_name)):
+        #     return None
+
+        # self._cmd(
+        #     "wget -t 10 {} -P {}".format(
+        #         "https://apollo-system.cdn.bcebos.com/archive/6.0/{}".format(dds_name),
+        #         self._dowload_path),
+        # )
+        # os.chdir(self._dowload_path)
+        # self._cmd("tar -zxvf {}".format(dds_name))
+        # self._cmd("cp -r fast-rtps-1.5.0-1/* {}".format(self._install_prefix))
+        # self._cmd("rm -rf fast-rtps-1.5.0-1/")
+        # os.chdir(self._current_path)
 
 
 if __name__ == "__main__":
-    install = Install()
-    install.start()
+    build = Build()
+    build.start()
