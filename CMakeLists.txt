@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5.1)
 
-project(cyber VERSION 8.0.0) # Apollo Version
+project(cyber VERSION 9.0.0) # Apollo Version
 
 set(CMAKE_CXX_STANDARD 14)
 set(TARGET_NAME ${PROJECT_NAME})
@@ -31,10 +31,16 @@ find_package(Poco REQUIRED COMPONENTS Foundation)
 find_package(glog REQUIRED)
 find_package(Protobuf REQUIRED)
 # find_package(Python REQUIRED COMPONENTS Interpreter Development)
-pkg_check_modules(Python REQUIRED python3)
+find_package(Python3 COMPONENTS Interpreter Development)
+# pkg_check_modules(Python REQUIRED python3)
 pkg_check_modules(Uuid REQUIRED uuid)
 pkg_check_modules(Gflags REQUIRED gflags)
 pkg_check_modules(NlohmannJson REQUIRED nlohmann_json)
+
+set(Python_VERSION ${Python3_VERSION})
+set(Python_INCLUDE_DIRS ${Python3_INCLUDE_DIRS})
+set(Python_LIBRARIES_DIRS ${Python3_LIBRARY_DIRS})
+set(Python_LIBRARIES ${Python3_LIBRARIES})
 
 # set(Python_VERSION "${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}")
 set(Python_VERSION "${Python_VERSION}")
